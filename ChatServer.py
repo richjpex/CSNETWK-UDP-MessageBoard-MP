@@ -1,15 +1,16 @@
 import socket
 import json
+import threading
 
-# create a UDP socket
+# create UDP socket
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-# bind the socket to a specific IP address and port
+# bind socket to specific IP address and port
 server_address = ('localhost', 4000)
 sock.bind(server_address)
 print(f"Server created at {server_address}")
 
-# create a dictionary to keep track of registered handles
+# create dictionary of registered handles
 handles = {}
 
 while True:
@@ -24,26 +25,26 @@ while True:
         sock.sendto(json.dumps(error_message).encode('utf-8'), address)
         continue
 
-    # process the JSON command
-    command = json_data.get('command', '').lower()
+    #process the JSON command
+    json_command = json_data.get('command', '').lower()
 
-    if command == 'join':
-        # connect to the server
-        response = {'command': 'join', 'message': 'You have joined the server.'}
-        sock.sendto(json.dumps(response).encode('utf-8'), address)
+    # if command is /join
+    if json_command == 'join':
         print(f'Client {address} has joined.')
 
-    elif command == 'leave':
-        # disconnect from the server
+    # if command is /leave
+    elif json_command == 'leave':
         response = {'command': 'leave', 'message': 'You have left the server.'}
         sock.sendto(json.dumps(response).encode('utf-8'), address)
         print(f'Client {address} has disconnected.')
 
-    elif command == 'register':
+    # if command is /register
+    elif json_command == 'register':
         # register a unique handle
         handle = json_data.get('handle', '').lower()
+
         if handle in handles:
-            error_message = {'command': 'error', 'message': f'The handle "{handle}" is already taken.'}
+            error_message = {'command': 'error', 'message': f'Registration failed. Handle or alias already exists.'}
             sock.sendto(json.dumps(error_message).encode('utf-8'), address)
         else:
             handles[handle] = address
@@ -51,7 +52,8 @@ while True:
             sock.sendto(json.dumps(response).encode('utf-8'), address)
             print("Welcome " + handle + "!")
 
-    elif command == 'all':
+    # if command is /all
+    elif json_command == 'all':
         # send message to all clients
         message = json_data.get('message', '')
         for handle, client_address in handles.items():
@@ -59,7 +61,8 @@ while True:
                 response = {'command': 'all', 'handle': handle, 'message': message}
                 sock.sendto(json.dumps(response).encode('utf-8'), client_address)
 
-    elif command == 'msg':
+    # if command is /msg
+    elif json_command == 'msg':
         # send direct message to a single handle
         handle = json_data.get('handle', '').lower()
         if handle not in handles:
@@ -72,8 +75,7 @@ while True:
 
     else:
         # unknown command
-        error_message = {'command': 'error', 'message': f'Unknown command "{command}".'}
+        error_message = {'command': 'error', 'message': f'Unknown command "{json_command}".'}
         sock.sendto(json.dumps(error_message).encode('utf-8'), address)
 
-# close the socket
 sock.close()

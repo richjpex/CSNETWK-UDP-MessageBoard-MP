@@ -1,18 +1,16 @@
 import socket
 import json
-import argparse
 
 # create a UDP socket
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-# parse command line arguments
-parser = argparse.ArgumentParser()
-parser.add_argument('server', help='server IP address')
-parser.add_argument('port', type=int, help='server port')
-args = parser.parse_args()
+# ask for address and port
+""" user_address = input("Enter server address: ")
+user_port = input("Enter server port: ")
+user_port = int(user_port)""" 
 
 # connect to the server
-server_address = (args.server, args.port)
+server_address = ("localhost", 4000)
 join_message = {'command': 'join'}
 sock.sendto(json.dumps(join_message).encode('utf-8'), server_address)
 
@@ -44,8 +42,8 @@ while True:
 
     elif command == 'register':
         # display registration message from server
-        handle = json_data.get('handle', '').title()
-        print(f'Welcome {handle}!')
+        user_handle = json_data.get('handle', '').title()
+        print(f'Welcome {user_handle}!')
 
     elif command == 'all':
         # display message from server
@@ -54,11 +52,12 @@ while True:
         print(f'{handle}: {message}')
 
     elif command == 'msg':
-        #display message from other client
+        # display incoming message from other client
         handle = json_data.get('handle', '')
         message = json_data.get('message', '')
         print(f'[From {handle}]: {message}')
 
+        
     elif command == 'error':
         # display error message from server
         print(f'Error: {json_data.get("message", "")}')
@@ -97,8 +96,8 @@ while True:
 
     elif command == '/register':
         # register a unique handle
-        handle = ' '.join(parts[1:])
-        register_message = {'command': 'register', 'handle': handle}
+        user_handle = ' '.join(parts[1:])
+        register_message = {'command': 'register', 'handle': user_handle}
         sock.sendto(json.dumps(register_message).encode('utf-8'), server_address)
 
     elif command == '/all':
@@ -113,6 +112,8 @@ while True:
         message = ' '.join(parts[2:])
         msg_message = {'command': 'msg', 'handle': handle, 'message': message}
         sock.sendto(json.dumps(msg_message).encode('utf-8'), server_address)
+        # display outgoing message to other client
+        print(f'[To {handle}]: {message}')
 
     elif command == '/?':
         # request command help from server
@@ -125,7 +126,3 @@ while True:
 
 # close the socket
 sock.close()
-
-
-
-
