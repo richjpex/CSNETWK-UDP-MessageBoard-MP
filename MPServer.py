@@ -1,83 +1,75 @@
 import socket
 import json
 
-# Define a list to keep track of registered usernames
-registered_users = []
-
-# Create a UDP socket
+# create a UDP socket
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-# Ask for input
-host = input("Enter host: ")
-port = input("Enter port: ")
-port = int(port)
-
-# Bind the socket to a specific IP address and port
-server_address = (host, port)
+# bind the socket to a specific IP address and port
+server_address = ('localhost', 4000)
 sock.bind(server_address)
 
+# create a dictionary to keep track of registered handles
+handles = {}
+
 while True:
-    print('\nWaiting for a command...')
+    # receive data from the client
     data, address = sock.recvfrom(4096)
 
-    # Decode the JSON data received from the client
-    decoded_data = json.loads(data.decode('utf-8'))
+    # decode the received data as a JSON object
+    try:
+        json_data = json.loads(data.decode('utf-8'))
+    except json.JSONDecodeError as e:
+        error_message = {'command': 'error', 'message': str(e)}
+        sock.sendto(json.dumps(error_message).encode('utf-8'), address)
+        continue
 
-    # Get the command and parameters from the decoded data
-    command = decoded_data['command']
+    # process the JSON command
+    command = json_data.get('command', '').lower()
 
     if command == 'join':
-        print(f'Client connected from {address}')
-
-    elif command == 'register':
-        handle = decoded_data['handle']
-        if handle in registered_users:
-            # Send an error response to the client
-            response = {'command': 'error', 'message': 'Username already taken'}
-            print(response)
-            encoded_response = json.dumps(response).encode('utf-8')
-            sock.sendto(encoded_response, address)
-        else:
-            # Register the new username
-            registered_users.append(handle)
-            # Send a success response to the client
-            response = {'command': 'success', 'message': 'Username registered'}
-            print(response)
-            encoded_response = json.dumps(response).encode('utf-8')
-            sock.sendto(encoded_response, address)
+        # connect to the server
+        response = {'command': 'join', 'message': 'You have joined the server.'}
+        sock.sendto(json.dumps(response).encode('utf-8'), address)
 
     elif command == 'leave':
-        print(f'Client at {address} disconnected')
-        break
+        # disconnect from the server
+        response = {'command': 'leave', 'message': 'You have left the server.'}
+        sock.sendto(json.dumps(response).encode('utf-8'), address)
+
+    elif command == 'register':
+        # register a unique handle
+        handle = json_data.get('handle', '').lower()
+        if handle in handles:
+            error_message = {'command': 'error', 'message': f'The handle "{handle}" is already taken.'}
+            sock.sendto(json.dumps(error_message).encode('utf-8'), address)
+        else:
+            handles[handle] = address
+            response = {'command': 'register', 'message': f'You are now registered as "{handle}".'}
+            sock.sendto(json.dumps(response).encode('utf-8'), address)
 
     elif command == 'all':
-        message = decoded_data['message']
-        print(f'Message received from {address}: {message}')
-        # Broadcast the message to all connected clients
-        for user_address in registered_users:
-            encoded_message = json.dumps({'command': 'broadcast', 'message': message}).encode('utf-8')
-            sock.sendto(encoded_message, user_address)
+        # send message to all clients
+        message = json_data.get('message', '')
+        for handle, client_address in handles.items():
+            if client_address != address:
+                response = {'command': 'all', 'handle': handle, 'message': message}
+                sock.sendto(json.dumps(response).encode('utf-8'), client_address)
 
     elif command == 'msg':
-        handle = decoded_data['handle']
-        message = decoded_data['message']
-        print(f'Private message received from {address} to {handle}: {message}')
-        # Send the private message to the specified client
-        if handle in registered_users:
-            encoded_message = json.dumps({'command': 'private', 'message': message}).encode('utf-8')
-            sock.sendto(encoded_message, handle)
+        # send direct message to a single handle
+        handle = json_data.get('handle', '').lower()
+        if handle not in handles:
+            error_message = {'command': 'error', 'message': f'The handle "{handle}" is not registered.'}
+            sock.sendto(json.dumps(error_message).encode('utf-8'), address)
         else:
-            # Send an error response to the client
-            response = {'command': 'error', 'message': 'User not found'}
-            encoded_response = json.dumps(response).encode('utf-8')
-            sock.sendto(encoded_response, address)
-
-    elif command == '?':
-        print('Help command received')
-        # Send a help message to the client
-        response = {'command': 'help', 'message': 'This is the help message'}
-        encoded_response = json.dumps(response).encode('utf-8')
-        sock.sendto(encoded_response, address)
+            message = json_data.get('message', '')
+            response = {'command': 'msg', 'handle': handle, 'message': message}
+            sock.sendto(json.dumps(response).encode('utf-8'), handles[handle])
 
     else:
-        print(f'Unknown command received from {address}')
+        # unknown command
+        error_message = {'command': 'error', 'message': f'Unknown command "{command}".'}
+        sock.sendto(json.dumps(error_message).encode('utf-8'), address)
+
+# close the socket
+sock.close()
