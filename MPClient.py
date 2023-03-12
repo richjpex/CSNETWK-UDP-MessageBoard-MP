@@ -34,15 +34,18 @@ while True:
     if command == 'join':
         # display join message from server
         print(json_data.get('message', ''))
+        print('Connection to the Message Board Server is successful!')
 
     elif command == 'leave':
         # display leave message from server
         print(json_data.get('message', ''))
+        print('Connection closed. Thank you!')
         break
 
     elif command == 'register':
         # display registration message from server
-        print(json_data.get('message', ''))
+        handle = json_data.get('handle', '').lower()
+        print(f'Welcome {handle}!')
 
     elif command == 'all':
         # display message from server
@@ -51,10 +54,10 @@ while True:
         print(f'{handle}: {message}')
 
     elif command == 'msg':
-        # display message from server
+        #display message from other client
         handle = json_data.get('handle', '')
         message = json_data.get('message', '')
-        print(f'{handle} (private): {message}')
+        print(f'[From {handle}]: {message}')
 
     elif command == 'error':
         # display error message from server

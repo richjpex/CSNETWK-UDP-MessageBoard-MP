@@ -30,11 +30,13 @@ while True:
         # connect to the server
         response = {'command': 'join', 'message': 'You have joined the server.'}
         sock.sendto(json.dumps(response).encode('utf-8'), address)
+        print(f'Client {address} has joined.')
 
     elif command == 'leave':
         # disconnect from the server
         response = {'command': 'leave', 'message': 'You have left the server.'}
         sock.sendto(json.dumps(response).encode('utf-8'), address)
+        print("Connection closed. Thank you!")
 
     elif command == 'register':
         # register a unique handle
@@ -46,6 +48,7 @@ while True:
             handles[handle] = address
             response = {'command': 'register', 'message': f'You are now registered as "{handle}".'}
             sock.sendto(json.dumps(response).encode('utf-8'), address)
+            print("Welcome " + handle + "!")
 
     elif command == 'all':
         # send message to all clients
