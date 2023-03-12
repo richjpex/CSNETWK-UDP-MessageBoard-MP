@@ -1,110 +1,89 @@
 import socket
 import json
-import threading
 
-class MPClient:
-    def __init__(self):
-        self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.connected = False
-        self.handle = ""
+# Define the server's IP address and port number
+server_ip = ""
+server_port = 0
 
-    def connect(self, server_ip, port):
-        self.client_socket.connect((server_ip, port))
-        self.connected = True
-        self.receive_thread = threading.Thread(target=self.receive)
-        self.receive_thread.start()
-        print("Connection to the Message Board Server is successful!")
+# Define a function to connect to the server
+def connect(inp):
+    # Split input
+    params = inp.split()
+    server_ip = params[1]
+    server_port = int(params[2])
 
-    def disconnect(self):
-        if self.connected:
-            self.send_command({"command": "leave"})
-            self.client_socket.close()
-            self.connected = False
-            print("Connection closed. Thank you!")
-        else:
-            print("Error: Disconnection failed. Please connect to the server first.")
+    # Create a UDP socket and connect it to the server
+    client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    client_socket.connect((server_ip, server_port))
+    # Send a join command to the server to register the client
+    command = {"command": "join"}
+    client_socket.send(json.dumps(command).encode())
+    return client_socket
 
-    def register(self, handle):
-        if self.connected:
-            self.send_command({"command": "register", "handle": handle})
-        else:
-            print("Error: Please connect to the server first.")
+# Define a function to register a handle or alias with the server
+def register(client_socket, inp):
+    params = inp.split()
+    # Ask the user for their handle or alias
+    handle = params[1]
+    #handle = input("Enter your handle or alias: ")
+    # Send a register command to the server with the user's handle
+    command = {"command": "register", "handle": handle}
+    client_socket.send(json.dumps(command).encode())
 
-    def send_all(self, message):
-        if self.connected:
-            self.send_command({"command": "all", "message": message})
-        else:
-            print("Error: Please connect to the server first.")
+# Define a function to send a message to all clients
+def send_all(client_socket, inp):
+    # Ask the user for their message
+    message = inp[5:]
+    # Send an all command to the server with the user's message
+    command = {"command": "all", "message": message}
+    client_socket.send(json.dumps(command).encode())
 
-    def send_direct(self, handle, message):
-        if self.connected:
-            self.send_command({"command": "msg", "handle": handle, "message": message})
-        else:
-            print("Error: Please connect to the server first.")
+# Define a function to send a direct message to a single client
+def send_direct(client_socket):
+    # Ask the user for the recipient's handle and message
+    handle = input("Enter the recipient's handle: ")
+    message = input("Enter your message: ")
+    # Send a msg command to the server with the recipient's handle and the user's message
+    command = {"command": "msg", "handle": handle, "message": message}
+    client_socket.send(json.dumps(command).encode())
 
-    def get_help(self):
-        print("Input Commands:\n"
-              "/join <server_ip_add> <port>\n"
-              "/leave\n"
-              "/register <handle>\n"
-              "/all <message>\n"
-              "/msg <handle> <message>\n"
-              "/?")
-
-    def send_command(self, command):
-        json_command = json.dumps(command)
-        self.client_socket.send(json_command.encode())
-
-    def receive(self):
-        while self.connected:
-            try:
-                message = self.client_socket.recv(1024).decode()
-                if message:
-                    message = json.loads(message)
-                    if message["command"] == "error":
-                        print("Error:", message["message"])
-                    elif message["command"] == "registration":
-                        self.handle = message["handle"]
-                        print("Welcome {}!".format(self.handle))
-                    elif message["command"] == "all":
-                        print("{}: {}".format(message["handle"], message["message"]))
-                    elif message["command"] == "direct":
-                        print("[From {}]: {}".format(message["handle"], message["message"]))
-                    elif message["command"] == "private":
-                        print("[To {}]: {}".format(message["handle"], message["message"]))
-            except Exception as e:
-                print("Error in receive function:", e)
-                break
-
-    def start(self):
-        while True:
-            message = input("> ")
-            if message == "/leave":
-                self.send_command({"command": "leave"})
-                break
-            elif message.startswith("/join"):
-                _, host, port = message.split()
-                self.connect(host, int(port))
-                self.send_command({"command": "join"})
-            elif message.startswith("/register"):
-                _, handle = message.split()
-                self.register(handle)
-            elif message.startswith("/all"):
-                _, content = message.split(" ", 1)
-                self.send_all(content)
-            elif message.startswith("/msg"):
-                _, handle, content = message.split(" ", 2)
-                self.send_direct(handle, content)
-            elif message.startswith("/?"):
-                self.get_help()
-            else:
-                print("Error: Command not found.")
+# Define the main function to handle user input and send commands to the server
+def main():
+    # Connect to the server
+    #client_socket = connect()
+    # Keep listening for user input until the user disconnects from the server
+    while True:
+        # Get the user's command
+        user_input = input("> ")
+        # Use join
+        if user_input.startswith("/join"):
+            client_socket = connect(user_input)
+        # Check if the user wants to register a handle
+        if user_input.startswith("/register"):
+            register(client_socket, user_input)
+        # Check if the user wants to send a message to all clients
+        elif user_input.startswith("/all"):
+            send_all(client_socket, user_input)
+        # Check if the user wants to send a direct message to a single client
+        elif user_input.startswith("/msg"):
+            send_direct(client_socket)
+        # Check if the user wants to disconnect from the server
+        elif user_input.startswith("/leave"):
+            # Send a leave command to the server to unregister the client
+            command = {"command": "leave"}
+            client_socket.send(json.dumps(command).encode())
+            # Close the socket and exit the program
+            client_socket.close()
+            break
+        # Check if the user wants to get help
+        elif user_input.startswith("/?"):
+            # Print a help message
+            print("Available commands:")
+            print("/register <handle>: Register a unique handle or alias")
+            print("/all <message>: Send a message to all clients")
+            print("/msg <handle> <message>: Send a direct message to a single client")
+            print("/leave: Disconnect from the server")
 
 
-
-
-if __name__ == "__main__":
-    client = MPClient()
-    client.start()
-    client.receive()
-
+if __name__ == '__main__':
+    main()
