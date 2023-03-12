@@ -44,7 +44,7 @@ while True:
 
     elif command == 'register':
         # display registration message from server
-        handle = json_data.get('handle', '').lower()
+        handle = json_data.get('handle', '').title()
         print(f'Welcome {handle}!')
 
     elif command == 'all':

@@ -7,6 +7,7 @@ sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 # bind the socket to a specific IP address and port
 server_address = ('localhost', 4000)
 sock.bind(server_address)
+print(f"Server created at {server_address}")
 
 # create a dictionary to keep track of registered handles
 handles = {}
@@ -46,7 +47,7 @@ while True:
             sock.sendto(json.dumps(error_message).encode('utf-8'), address)
         else:
             handles[handle] = address
-            response = {'command': 'register', 'message': f'You are now registered as "{handle}".'}
+            response = {'command': 'register', 'handle': handle, 'message': f'You are now registered as "{handle}".'}
             sock.sendto(json.dumps(response).encode('utf-8'), address)
             print("Welcome " + handle + "!")
 
