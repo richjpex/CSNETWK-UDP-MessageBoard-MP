@@ -1,98 +1,113 @@
 import socket
 import json
-import threading
 
-# create a UDP socket
+# create UDP socket
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-server_address = None
 
-# print welcome message
-print("WELCOME TO THE CSNETWK CHAT CLIENT")
+# bind socket to specific IP address and port
+server_address = ('localhost', 4000)
+sock.bind(server_address)
+print(f"Server created at {server_address}")
 
-# set connected to false by default
 connected = False
-is_registered = False
-valid_commands = ['/join', '/leave', '/all', '/msg', '/register', '/?']
-unjoined_commands = valid_commands.pop(0)
-client_addresses = []
-# loop for logging in to server
+
+while not connected:
+    # get user input
+    user_input = input("> ")
+
+    # parse user input
+    command_list = user_input.split()
+    command = command_list[0].lower()
+
+    if command == '/join' and len(command_list) == 3:
+        # try to connect to server
+        try:
+            address = command_list[1]
+            port = int(command_list[2])
+            sock.connect((address, port))
+            connected = True
+            print('Connected!')
+        except (socket.gaierror, ValueError):
+            print('Invalid address or port. Please try again.')
+            continue
+
+    else:
+        print('Please connect to the server using "/join <address> <port>"')
+        
+# main loop for sending and receiving messages
 while True:
-    # ask for user input
-    user_inp = input('> ')
+    # get user input
+    user_input = input("> ")
 
-    # parse user input as a command and parameters
-    parts = user_inp.split()
-    command = parts[0].lower()
+    # parse user input
+    command_list = user_input.split()
+    command = command_list[0].lower()
 
-    if command != '/join' and connected == False:
-        print("You must join a server first. Use /join <ip address> <port> to join a server")
+    # create JSON object based on user input
+    json_obj = {}
+    if command == '/register' and len(command_list) == 2:
+        json_obj['command'] = 'register'
+        json_obj['handle'] = command_list[1]
 
-    elif len(parts) != 3:
-        print("Invalid parameters")
+    elif command == '/all' and len(command_list) >= 2:
+        json_obj['command'] = 'all'
+        json_obj['message'] = ' '.join(command_list[1:])
 
-    elif command == '/join' and connected == False:
-        connected = True
-        server_address = (parts[1], int(parts[2]))
-        join_message = {'command': 'join'}
-        sock.sendto(json.dumps(join_message).encode('utf-8'), server_address)
+    elif command == '/msg' and len(command_list) >= 3:
+        json_obj['command'] = 'msg'
+        json_obj['handle'] = command_list[1]
+        json_obj['message'] = ' '.join(command_list[2:])
+
+    elif command == '/leave' and len(command_list) == 1:
+        json_obj['command'] = 'leave'
+
+    elif command == '/?' and len(command_list) == 1:
+        print('Available commands:')
+        print('/register <handle>')
+        print('/all <message>')
+        print('/msg <handle> <message>')
+        print('/leave')
+        print('/?')
+
+    else:
+        print('Unknown command. Type /? to see available commands.')
+        continue
+
+    # send JSON object to server
+    json_str = json.dumps(json_obj)
+    sock.sendall(json_str.encode())
+
+    # receive response from server
+    data = sock.recv(4096)
+
+    # decode the received data as a JSON object
+    try:
+        json_data = json.loads(data.decode('utf-8'))
+    except json.JSONDecodeError as e:
+        print(f"Error: {str(e)}")
+        continue
+
+    # process the JSON response
+    json_command = json_data.get('command', '').lower()
+
+    if json_command == 'leave':
+        print(json_data['message'])
         break
 
-    
-# debugging
-print(f"WELCOME TO {server_address}")
-#print(parts)
+    elif json_command == 'register':
+        print(json_data['message'])
 
-# once connected
-while connected:
-    # <-- SENDING -->
-    # ask for user input
-    user_inp = input('> ')
+    elif json_command == 'all':
+        handle = json_data.get('handle', '')
+        message = json_data.get('message', '')
+        print(f"[All] {handle}: {message}")
 
-    # parse user input as a command and parameters
-    parts = user_inp.split()
-    command = parts[0].lower()
+    elif json_command == 'msg':
+        handle = json_data.get('handle', '')
+        message = json_data.get('message', '')
+        print(f"[Msg] {handle}: {message}")
 
-    # IF NOT IN VALID COMMANDS
-    while command not in valid_commands:
-        print(f'Unknown command "{command}".')
-        user_inp = input('> ')
-        parts = user_inp.split()
-        command = parts[0].lower()
-    # /leave
-    if command == '/leave':
-        leave_message = {'command': 'leave'}
-        sock.sendto(json.dumps(leave_message).encode('utf-8'), server_address)
-
-    # /register
-    elif command == '/register':
-        user_handle = parts[1]
-        register_message = {'command': 'register', 'handle': user_handle}
-        sock.sendto(json.dumps(register_message).encode('utf-8'), server_address)
-
-    # /all
-    elif command == '/all':
-        message = ' '.join(parts[1:])
-        all_message = {'command': 'all', 'message': message}
-        sock.sendto(json.dumps(all_message).encode('utf-8'), server_address)
-
-        # send the message to all clients
-        for client_address in client_addresses:
-            if client_address != server_address:
-                sock.sendto(json.dumps(all_message).encode('utf-8'), client_address)
-
-    # wait for a response from the server or other clients
-    data, address = sock.recvfrom(1024)
-    data = json.loads(data.decode('utf-8'))
-
-    # process the response
-    if data['command'] == 'register':
-        client_addresses.append(address)
-    elif data['command'] == 'all':
-        print(f'{data["handle"]}: {data["message"]}')
-    elif data['command'] == 'leave':
-        client_addresses.remove(address)
-    else:
-        print(f'Unknown command "{data["command"]}".')
-
+    elif json_command == 'error':
+        print(json_data['message'])
 
 sock.close()

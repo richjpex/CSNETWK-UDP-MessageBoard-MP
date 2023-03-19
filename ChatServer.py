@@ -78,4 +78,4 @@ while True:
         error_message = {'command': 'error', 'message': f'Unknown command "{json_command}".'}
         sock.sendto(json.dumps(error_message).encode('utf-8'), address)
 
-sock.close()
+    sock.close()
