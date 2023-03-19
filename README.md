@@ -1,1 +1,3 @@
 # CSNETWK-MP
+
+The final output of this course (CSNETWK) would be a Message Board System, allowing clients to be able to communicate with other clients through the server using the UDP protocol. The Message Board System would need to be comprised to a server application and a client application. The project must be done either individually or by pair. You may also choose to use either C, Java, or Python programming languages for this project.
