@@ -6,7 +6,7 @@ import threading
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
 # bind socket to specific IP address and port
-server_address = ('localhost', 4000)
+server_address = ('127.0.0.1', 12345)
 sock.bind(server_address)
 print(f"Server created at {server_address}")
 
@@ -20,6 +20,7 @@ while True:
     # decode the received data as a JSON object
     try:
         json_data = json.loads(data.decode('utf-8'))
+
     except json.JSONDecodeError as e:
         error_message = {'command': 'error', 'message': str(e)}
         sock.sendto(json.dumps(error_message).encode('utf-8'), address)
@@ -30,6 +31,7 @@ while True:
 
     # if command is /join
     if json_command == 'join':
+        response = {'command': 'join'}
         print(f'Client {address} has joined.')
 
     # if command is /leave
@@ -78,4 +80,4 @@ while True:
         error_message = {'command': 'error', 'message': f'Unknown command "{json_command}".'}
         sock.sendto(json.dumps(error_message).encode('utf-8'), address)
 
-    sock.close()
+sock.close()
