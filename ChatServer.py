@@ -43,13 +43,14 @@ while True:
     # if command is /register
     elif json_command == 'register':
         # register a unique handle
-        handle = json_data.get('handle', '').lower()
+        handle = json_data.get('handle', '')
 
         if handle in handles:
             error_message = {'command': 'error', 'message': f'Registration failed. Handle or alias already exists.'}
             sock.sendto(json.dumps(error_message).encode('utf-8'), address)
         else:
             handles[handle] = address
+            print(handles)
             response = {'command': 'register', 'handle': handle, 'message': f'You are now registered as "{handle}".'}
             sock.sendto(json.dumps(response).encode('utf-8'), address)
             print("Welcome " + handle + "!")
@@ -66,16 +67,21 @@ while True:
     # if command is /msg
     elif json_command == 'msg':
         # send direct message to a single handle
-        handle = json_data.get('handle', '').lower()
+        # get the handle from the handles dictionary based on the addr from the client
+        for key, value in handles.items():
+            if value == address:
+                user_handle = key
+
+        handle = json_data.get('handle', '')
         if handle not in handles:
             error_message = {'command': 'error', 'message': f'The handle "{handle}" is not registered.'}
             sock.sendto(json.dumps(error_message).encode('utf-8'), address)
         else:
             message = json_data.get('message', '')
-            response = {'command': 'msg', 'handle': handle, 'message': message}
+            response = {'command': 'msg', 'handle': user_handle, 'message': message}
             sock.sendto(json.dumps(response).encode('utf-8'), handles[handle])
 
-    else:
+    elif json_command == "error":
         # unknown command
         error_message = {'command': 'error', 'message': f'Unknown command "{json_command}".'}
         sock.sendto(json.dumps(error_message).encode('utf-8'), address)
