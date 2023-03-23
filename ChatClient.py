@@ -31,17 +31,18 @@ def join_server():
                     return True
                 
                 else:
-                    print("Invalid address.")
+                    print("Error: Connection to the Message Board Server has failed! Please check IP address and Port Number.")
 
             except (socket.gaierror, socket.error, ValueError) as e: #ConnectionRefusedError, TimeoutError  
-                print("Socket connection failed: {}".format(e))
-                print("Invalid port. Please try again.")
+                #print("Socket connection failed: {}".format(e))
+                print("Error: Connection to the Message Board Server has failed! Please check IP address and Port Number.")
 
         elif command != '/join':
             print('Invalid command. Please use /join to connect.')
 
         elif command == '/join' and len(command_list) != 3:
             print("Invalid parameters.\nSyntax: /join <host address> <port>")
+            print("Error: Command parameters do not match or is not allowed.")
 
 # Create a function to send JSON commands to server
 def send_json():
@@ -81,9 +82,9 @@ def send_json():
             json_obj['command'] = 'leave'
             json_str = json.dumps(json_obj)
             sock.sendall(json_str.encode())
-            break
+            return False
 
-        elif command == '?' and len(command_list) == 1:
+        elif command == '/?' and len(command_list) == 1:
             print("Commands:")
             print("/register <handle>")
             print("/all <message>")
@@ -163,6 +164,3 @@ sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
 # Handle the connection
 handle_connection()
-
-# Close the socket
-sock.close()

@@ -40,6 +40,10 @@ while True:
         sock.sendto(json.dumps(response).encode('utf-8'), address)
         print(f'Client {address} has disconnected.')
 
+        # delete from handles dictionary
+        for key, value in dict(handles).items():
+            handles.pop(key)
+
     # if command is /register
     elif json_command == 'register':
         # register a unique handle
@@ -58,10 +62,15 @@ while True:
     # if command is /all
     elif json_command == 'all':
         # send message to all clients
+        # get handle based on the addr from the client
+        for key, value in handles.items():
+            if value == address:
+                user_handle = key
+                
         message = json_data.get('message', '')
         for handle, client_address in handles.items():
             if client_address != address:
-                response = {'command': 'all', 'handle': handle, 'message': message}
+                response = {'command': 'all', 'handle': user_handle, 'message': message}
                 sock.sendto(json.dumps(response).encode('utf-8'), client_address)
 
     # if command is /msg
@@ -81,9 +90,12 @@ while True:
             response = {'command': 'msg', 'handle': user_handle, 'message': message}
             sock.sendto(json.dumps(response).encode('utf-8'), handles[handle])
 
+    # if command is error
     elif json_command == "error":
         # unknown command
         error_message = {'command': 'error', 'message': f'Unknown command "{json_command}".'}
         sock.sendto(json.dumps(error_message).encode('utf-8'), address)
+
+
 
 sock.close()
