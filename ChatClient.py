@@ -2,48 +2,6 @@ import socket
 import json
 import threading
 
-# Create a function to keep asking user to input "/join" command
-# Once user input "/join" command, connect to server and send JSON command to server
-# Then the user can use other commands to send JSON commands to server
-def join_server():
-    while True:
-        # get user input
-        user_input = input()
-
-        # parse user input
-        command_list = user_input.split()
-        command = command_list[0].lower()
-
-        json_obj = {}
-        if command == '/join' and len(command_list) == 3:
-            try:
-                # get address and port and connect to server
-                address = command_list[1]
-                port = int(command_list[2])
-
-                if address == "localhost" or address == "127.0.0.1":
-                    sock.connect((address, port))
-                    # Send JSON command to server
-                    json_obj['command'] = 'join'
-                    json_str = json.dumps(json_obj)
-                    sock.sendall(json_str.encode())
-                    print("Connection success!")
-                    return True
-                
-                else:
-                    print("Error: Connection to the Message Board Server has failed! Please check IP address and Port Number.")
-
-            except (socket.gaierror, socket.error, ValueError) as e: #ConnectionRefusedError, TimeoutError  
-                #print("Socket connection failed: {}".format(e))
-                print("Error: Connection to the Message Board Server has failed! Please check IP address and Port Number.")
-
-        elif command != '/join':
-            print('Invalid command. Please use /join to connect.')
-
-        elif command == '/join' and len(command_list) != 3:
-            print("Invalid parameters.\nSyntax: /join <host address> <port>")
-            print("Error: Command parameters do not match or is not allowed.")
-
 # Create a function to send JSON commands to server
 def send_json():
 
@@ -95,72 +53,66 @@ def send_json():
             print("Invalid command.")
 
 # Create a function to listen for messages from server
-def listen():
-    # Continuously listen for messages from server
+def listen_for_messages():
+
     while True:
-        data, addr = sock.recvfrom(1024)
-
-        try:
-            json_data = json.loads(data.decode('utf-8'))
-        except json.decoder.JSONDecodeError:
-            print("Error: Invalid JSON data.")
-            continue
-
-        json_command = json_data['command'].lower()
-
-        # If the json_command is 'leave', print the message and return False
-        if json_command == 'leave':
-            message = json_data['message']
-            print(message)
+        # Receive data from the server and shut down
+        data = sock.recv(1024)
+        if not data:
+            break
+        # Decode JSON data
+        json_obj = json.loads(data.decode())
+        # Print messages from server
+        if json_obj['command'] == 'register':
+            print(f"Registered as {json_obj['handle']}.")
+        elif json_obj['command'] == 'all':
+            print(f"[From {json_obj['handle']}]: {json_obj['message']}")
+        elif json_obj['command'] == 'msg':
+            print(f"[From {json_obj['handle']}]: {json_obj['message']}")
+        elif json_obj['command'] == 'leave':
+            print("Disconnected from server.")
             return False
-
-        # If the json_command is 'msg', print the message from the user
-        elif json_command == 'msg':
-            handle = json_data['handle']
-            message = json_data['message']
-            print(f"[From {handle}]: {message}")
-
-        # If the json_command is 'all', print the message from the user
-        elif json_command == 'all':
-            handle = json_data['handle']
-            message = json_data['message']
-            print(handle + ": " + message)
-
-        # If the json_command is 'register', print the message
-        elif json_command == 'register':
-            handle = json_data['handle']
-            message = json_data['message']
-            print(message)
-
-        # If the json_command is 'error', print the error message
-        elif json_command == 'error':
-            message = json_data['message']
-            print(message)
-
         
-        # If the json_command is not any of the above, print the error message
-        else:
-            print("Error: Invalid command.")
-
-# Create a function to handle the connection
-def handle_connection():
-    # Keep asking user to input "/join" command
-    join_server()
-
-    # Create a thread to listen for messages from server
-    listen_thread = threading.Thread(target=listen)
-    listen_thread.start()
-
-    # Create a thread to send JSON commands to server
-    send_json_thread = threading.Thread(target=send_json)
-    send_json_thread.start()
-
-    # Wait for the threads to finish
-    listen_thread.join()
-    send_json_thread.join()
-
-# Create a socket
+# Create a socket object
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-# Handle the connection
-handle_connection()
+# Reprompt the user for input if the user enters an invalid command
+while True:
+    user_input = input()
+
+    # Parse user input
+    command_list = user_input.split()
+    command = command_list[0].lower()
+
+    # Check if user input is valid
+    if command == '/join' and len(command_list) == 3:
+        host = command_list[1]
+        port = int(command_list[2])
+        if host == 'localhost' or host == '127.0.0.1':
+            if port == 12345:
+                # Connect the socket to the port where the server is listening
+                server_address = (host, port)
+                print(f"Connecting to {host} port {port}")
+                sock.connect(server_address)
+                print("Connected to server.")
+                # Create threads
+                send_thread = threading.Thread(target=send_json)
+                listen_thread = threading.Thread(target=listen_for_messages)
+                # Start threads
+                send_thread.start()
+                listen_thread.start()
+                # Join threads
+                send_thread.join()
+                listen_thread.join()
+            else:
+                print("Error: Invalid port number.")
+        else:
+            print("Error: Invalid host address.")
+    elif command == '/?' and len(command_list) == 1:
+        print("Commands:")
+        print("/join <host> <port>")
+        print("/?")
+    else:
+        print("Invalid command.")
+
+

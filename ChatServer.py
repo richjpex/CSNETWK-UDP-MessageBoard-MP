@@ -15,7 +15,7 @@ handles = {}
 
 while True:
     # receive data from the client
-    data, address = sock.recvfrom(4096)
+    data, address = sock.recvfrom(1024)
 
     # decode the received data as a JSON object
     try:
