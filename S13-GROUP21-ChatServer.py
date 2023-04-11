@@ -33,6 +33,8 @@ while True:
     # if command is /join
     if json_command == 'join':
         print(f'Client {address} has joined.')
+        join_response = {'command': 'join', 'message': 'You are connected to the server!'}
+        sock.sendto(json.dumps(join_response).encode('utf-8'), address)
 
     # if command is /leave
     elif json_command == 'leave':

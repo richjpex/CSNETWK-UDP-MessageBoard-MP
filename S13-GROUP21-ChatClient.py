@@ -1,8 +1,11 @@
 # Richard John Pecson Jr.
 # Jose Lorenzo Santos
 # CSNETWK - S13
-
+import subprocess
 import socket, json, threading
+
+subprocess.run(["pip", "install", "art"])
+
 from art import *
 
 current_handle = None
@@ -97,7 +100,10 @@ def listen_for_messages():
             # Decode JSON data
             json_obj = json.loads(data.decode())
             # Print messages from server
-            if json_obj['command'] == 'register':
+            if json_obj['command'] == 'join':
+                print(f"{json_obj['message']}")
+
+            elif json_obj['command'] == 'register':
                 #print(f"Welcome {json_obj['handle']}!")
                 print(f"{json_obj['message']}")
 
@@ -149,7 +155,7 @@ def login():
                 json_str = json.dumps(json_obj)
                 sock.sendall(json_str.encode())
 
-                print("Connection to the Message Board Server is successful!")
+                #print("Connection to the Message Board Server is successful!")
 
                 # Create threads
                 send_thread = threading.Thread(target=send_json)
