@@ -1,6 +1,5 @@
 import socket
 import json
-import threading
 
 # create UDP socket
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -31,18 +30,18 @@ while True:
 
     # if command is /join
     if json_command == 'join':
-        response = {'command': 'join'}
         print(f'Client {address} has joined.')
 
     # if command is /leave
     elif json_command == 'leave':
-        response = {'command': 'leave', 'message': 'You have left the server.'}
-        sock.sendto(json.dumps(response).encode('utf-8'), address)
         print(f'Client {address} has disconnected.')
 
-        # delete from handles dictionary
-        for key, value in dict(handles).items():
-            handles.pop(key)
+        # delete the handle from the handles dictionary of the client that left
+        for key, value in handles.items():
+            if value == address:
+                del handles[key]
+                print(f"Current handles: {handles}")
+                break
 
     # if command is /register
     elif json_command == 'register':
@@ -50,8 +49,9 @@ while True:
         handle = json_data.get('handle', '')
 
         if handle in handles:
-            error_message = {'command': 'error', 'message': f'Registration failed. Handle or alias already exists.'}
+            error_message = {'command': 'error', 'message': f'Error: Registration failed. Handle or alias already exists.'}
             sock.sendto(json.dumps(error_message).encode('utf-8'), address)
+        
         else:
             handles[handle] = address
             print(handles)
@@ -69,9 +69,10 @@ while True:
                 
         message = json_data.get('message', '')
         for handle, client_address in handles.items():
-            if client_address != address:
-                response = {'command': 'all', 'handle': user_handle, 'message': message}
-                sock.sendto(json.dumps(response).encode('utf-8'), client_address)
+            response = {'command': 'all', 'handle': user_handle, 'message': message}
+            sock.sendto(json.dumps(response).encode('utf-8'), client_address)
+
+            
 
     # if command is /msg
     elif json_command == 'msg':
@@ -83,17 +84,29 @@ while True:
 
         handle = json_data.get('handle', '')
         if handle not in handles:
-            error_message = {'command': 'error', 'message': f'The handle "{handle}" is not registered.'}
+            error_message = {'command': 'error', 'message': f'Error: Handle or alias "{handle}" not found'}
             sock.sendto(json.dumps(error_message).encode('utf-8'), address)
         else:
             message = json_data.get('message', '')
-            response = {'command': 'msg', 'handle': user_handle, 'message': message}
-            sock.sendto(json.dumps(response).encode('utf-8'), handles[handle])
+
+            recipient_response = {'command': 'msg', 'handle': user_handle, 'message': f'[From {user_handle}]: {message}'}
+            sock.sendto(json.dumps(recipient_response).encode('utf-8'), handles[handle])
+
+            sender_response = {'command': 'msg', 'handle': handle, 'message': f'[To {handle}]: {message}'}
+            sock.sendto(json.dumps(sender_response).encode('utf-8'), address)
 
     # if command is error
     elif json_command == "error":
+        # invalid param
+        if (json_data.get('message', '')) == 'INVALID-PARAMETERS':
+            error_message = {'command': 'error', 'message': 'Error: Command parameters do not match or is not allowed.'}
         # unknown command
-        error_message = {'command': 'error', 'message': f'Unknown command "{json_command}".'}
+        elif (json_data.get('message', '')) == 'UNKNOWN-COMMAND':
+            error_message = {'command': 'error', 'message': 'Error: Command not found.'}
+        # handle already exists
+        elif (json_data.get('message', '')) == 'ALREADY-REGISTERED':
+            error_message = {'command': 'error', 'message': 'Error: You are already registered.'}
+        
         sock.sendto(json.dumps(error_message).encode('utf-8'), address)
 
 
