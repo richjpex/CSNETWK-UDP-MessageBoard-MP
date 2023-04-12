@@ -56,12 +56,20 @@ while True:
             error_message = {'command': 'error', 'message': f'Error: Registration failed. Handle or alias already exists.'}
             sock.sendto(json.dumps(error_message).encode('utf-8'), address)
         
+        # if handle is not in handles, add it to the handles dictionary but first check if the user is already registered
         else:
-            handles[handle] = address
-            print(handles)
-            response = {'command': 'register', 'handle': handle, 'message': f'You are now registered as "{handle}".'}
-            sock.sendto(json.dumps(response).encode('utf-8'), address)
-            print("Welcome " + handle + "!")
+            for key, value in handles.items():
+                if value == address:
+                    error_message = {'command': 'error', 'message': f'Error: Registration failed. You are already registered.'}
+                    sock.sendto(json.dumps(error_message).encode('utf-8'), address)
+                    break
+            else:
+                handles[handle] = address
+                print(f"Current handles: {handles}")
+                register_response = {'command': 'register', 'message': f'Welcome {handle}!'}
+                sock.sendto(json.dumps(register_response).encode('utf-8'), address)
+
+        
 
     # if command is /all
     elif json_command == 'all':

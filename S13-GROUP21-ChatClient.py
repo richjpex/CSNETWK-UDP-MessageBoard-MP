@@ -16,11 +16,8 @@ def show_valid_commands():
     4. Send a message to all users: /all <message>
     5. Send a message to a specific user: /msg <handle> <message>""")
 
-current_handle = None
 # Create a function to send JSON commands to server
 def send_json():
-    
-    global current_handle
     #current_handle = None
     while True:
         # get user input
@@ -35,13 +32,7 @@ def send_json():
         # Send JSON commands to server
         if command == '/register':
             if len(command_list) == 2:
-                if current_handle is None:
-                    json_obj['command'], json_obj['handle'] = 'register', command_list[1]
-                    current_handle = command_list[1]
-                else:
-                    json_obj['command'],  json_obj['message'] = 'error', 'ALREADY-REGISTERED'
-                    current_handle = current_handle
-
+                json_obj['command'], json_obj['handle'] = 'register', command_list[1]
             else:
                 json_obj['command'],  json_obj['message'] = 'error', 'INVALID-PARAMETERS'
             
@@ -54,9 +45,7 @@ def send_json():
                 
             else:
                 json_obj['command'], json_obj['message'] = 'error', 'INVALID-PARAMETERS'
-            
-            if current_handle is None:
-                json_obj['command'], json_obj['message'] = 'error', 'NOT-REGISTERED'
+        
 
             json_str = json.dumps(json_obj)
             sock.sendall(json_str.encode())
@@ -97,7 +86,6 @@ def send_json():
 
 # Create a function to listen for messages from server
 def listen_for_messages():
-    global current_handle
     while True:
         # Receive data from the server
         try:
@@ -122,7 +110,6 @@ def listen_for_messages():
 
             elif json_obj['command'] == 'error':
                 print(f"{json_obj['message']}")
-                current_handle = None
 
             elif json_obj['command'] == 'leave':
                 print("Disconnected from server.")
@@ -133,7 +120,6 @@ def listen_for_messages():
         
 
 def login():
-    global current_handle
     print("Use /? to see a list of valid commands.")
     while True:
         
@@ -143,7 +129,7 @@ def login():
         command_list = user_input.split()
         command = command_list[0].lower()
 
-        # Create JSON object based on user input
+        # Create JSON object
         json_obj = {}
 
         # Check if user input is valid
