@@ -110,9 +110,7 @@ while True:
         # handle already exists
         elif (json_data.get('message', '')) == 'ALREADY-REGISTERED':
             error_message = {'command': 'error', 'message': 'Error: You are already registered.'}
+        elif (json_data.get('message', '')) == 'NOT-REGISTERED':
+            error_message = {'command': 'error', 'message': 'Error: You are not registered.'}
         
         sock.sendto(json.dumps(error_message).encode('utf-8'), address)
-
-
-
-sock.close()

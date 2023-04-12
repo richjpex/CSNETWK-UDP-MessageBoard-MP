@@ -8,6 +8,14 @@ subprocess.run(["pip", "install", "art"])
 
 from art import *
 
+def show_valid_commands():
+    print("""Command List:
+    1. Connect to the server: /join <IP Address> <Port Number>
+    2. Disconnect from the server: /leave
+    3. Register a handle: /register <handle>
+    4. Send a message to all users: /all <message>
+    5. Send a message to a specific user: /msg <handle> <message>""")
+
 current_handle = None
 # Create a function to send JSON commands to server
 def send_json():
@@ -47,6 +55,9 @@ def send_json():
             else:
                 json_obj['command'], json_obj['message'] = 'error', 'INVALID-PARAMETERS'
             
+            if current_handle is None:
+                json_obj['command'], json_obj['message'] = 'error', 'NOT-REGISTERED'
+
             json_str = json.dumps(json_obj)
             sock.sendall(json_str.encode())
 
@@ -76,11 +87,7 @@ def send_json():
                 sock.sendall(json_str.encode())
             
         elif command == '/?' and len(command_list) == 1:
-            print("Commands:")
-            print("/register <handle>")
-            print("/all <message>")
-            print("/msg <handle> <message>")
-            print("/leave")
+            show_valid_commands()
 
         # unknown command
         else:
@@ -127,6 +134,7 @@ def listen_for_messages():
 
 def login():
     global current_handle
+    print("Use /? to see a list of valid commands.")
     while True:
         
         user_input = input()
@@ -155,8 +163,6 @@ def login():
                 json_str = json.dumps(json_obj)
                 sock.sendall(json_str.encode())
 
-                #print("Connection to the Message Board Server is successful!")
-
                 # Create threads
                 send_thread = threading.Thread(target=send_json)
                 listen_thread = threading.Thread(target=listen_for_messages)
@@ -169,17 +175,14 @@ def login():
             else:
                 print("Error: Connection to the Message Board Server has failed! Please check IP Address and Port Number.")
 
-        elif len(command_list) != 3 and command != '/?':
-            print("Error: Command parameters do not match or is not allowed.")
+        elif len(command_list) == 3 and command != '/?':
+            print("Error: Invalid command.")
 
         elif command == '/leave' and len(command_list) == 1:
             print("Error: Disconnection failed. Please connect to the server first.")
             
         elif command == '/?' and len(command_list) == 1:
-            print("Commands:")
-            print("/join <host> <port>")
-        else:
-            print("Error: Command not found.")
+            show_valid_commands()
 
 if __name__ == '__main__':
 
